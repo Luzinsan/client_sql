@@ -9,7 +9,6 @@ from psycopg2 import connect
 from psycopg2 import OperationalError, errorcodes, errors
 
 import pandas as pd
-import numpy as np
 from tabulate import tabulate
 
 

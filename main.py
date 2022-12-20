@@ -83,8 +83,10 @@ def send_request():
         with dpg.table_row(parent='table_records'):
             for value in values:
                 dpg.add_text(default_value=value)
-    except OperationalError as err:
-        dpg.add_text(tag='insert_error', default_value=Error, color=(255, 0, 0), before='task_table')
+    except Exception as err:
+        print("Error")
+        dpg.add_text(tag='insert_error', default_value=Error, color=(255, 0, 0), before='table_records')
+        connect_database('table_records')
 
 
 def output_records(table_name, list_columns):
@@ -151,9 +153,8 @@ def output_tables(cursor):
         dpg.add_text(tag='output_list_error', default_value=Error, color=(255, 0, 0), before='list_tables')
 
 
-def connect_database():
+def connect_database(wrap: str):
     dpg.delete_item('connect_error')
-    dpg.delete_item('connect_success')
     auth_data = {'user': dpg.get_value('user'),
                  'password': dpg.get_value('password'),
                  'host': dpg.get_value('host'),
@@ -166,20 +167,26 @@ def connect_database():
                                       host=auth_data['host'],
                                       port=auth_data['port'],
                                       database=auth_data['database'])
-        # Распечатать сведения о PostgreSQL
-        print(connection.get_dsn_parameters())
         # Инициализация курсора для выполнения операций с базой данных
         cursor = connection.cursor(cursor_factory=DictCursor)
-        dpg.add_text(tag='connect_success', before='send_auth', color=(0, 255, 0),
-                     default_value=f"База данных успешно подключена.")
         dpg.set_item_user_data('auth', [connection, cursor])
-        dpg.configure_item('label_database', default_value=f"Список таблиц базы данных: {auth_data['database']}",
-                           show=True)
-        dpg.configure_item('task_button', show=True)
-        output_tables(cursor)
+        return connection, cursor, auth_data['database']
     except (Exception, Error) as error:
-        dpg.add_text(tag='connect_error', before='send_auth', color=(255, 0, 0),
+        dpg.add_text(tag='connect_error', before=wrap, color=(255, 0, 0),
                      default_value=f"Ошибка при работе с PostgreSQL: {error}")
+
+
+def open_database():
+    dpg.delete_item('connect_success')
+    connection, cursor, name_database = connect_database('send_auth')
+    # Распечатать сведения о PostgreSQL
+    print(connection.get_dsn_parameters())
+    dpg.add_text(tag='connect_success', before='send_auth', color=(0, 255, 0),
+                 default_value=f"База данных успешно подключена.")
+
+    dpg.configure_item('label_database', default_value=f"Список таблиц базы данных: {name_database}", show=True)
+    dpg.configure_item('task_button', show=True)
+    output_tables(cursor)
 
 
 ############################################# AUTHORIZATION ############################################################
@@ -191,7 +198,7 @@ with dpg.window(label="AUTHORIZATION", modal=True, show=False, tag="auth", no_ti
     dpg.add_input_text(label=":PORT", tag='port', default_value=DEFAULT_PORT)
     dpg.add_input_text(label=":DATABASE", tag='database', default_value=DEFAULT_DATABASE)
     with dpg.group(horizontal=True, tag='send_auth'):
-        dpg.add_button(label="Connect", width=75, callback=connect_database)
+        dpg.add_button(label="Connect", width=75, callback=open_database)
         dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("auth", show=False))
 ########################################################################################################################
 
