@@ -32,13 +32,12 @@ def add_task_table(columns, answer):
 def task_request():
     connection, cursor = dpg.get_item_user_data('auth')
     dpg.delete_item('task_error')
-
+    request = f"SELECT street, house, apartment, fio " \
+              f"FROM t_subs " \
+              f"JOIN t_pod on t_pod.id=t_subs.idpod " \
+              f"JOIN t_address on t_address.id=t_pod.idaddr " \
+              f"GROUP BY street, house, apartment, fio;"
     try:
-        request = f"SELECT street, house, apartment, fio " \
-                  f"FROM t_subs " \
-                  f"JOIN t_pod on t_pod.id=t_subs.idpod " \
-                  f"JOIN t_address on t_address.id=t_pod.idaddr " \
-                  f"GROUP BY street, house, apartment, fio;"
         cursor.execute(request)
         answer = cursor.fetchall()
         columns = ['Улица', 'Дом', 'Квартира\\Офис', 'ФИО']
@@ -56,7 +55,7 @@ def task_request():
         s.to_csv('task.csv')
     except Exception as err:
         # print_psycopg2_exception(err, 'task_table')
-        dpg.add_text(tag='task_error', default_value=Error, color=(255, 0, 0), before='task_table')
+        dpg.add_text(tag='task_error', default_value=err, color=(255, 0, 0), before='task_table')
 
 
 def send_request():
@@ -85,7 +84,7 @@ def send_request():
                 dpg.add_text(default_value=value)
     except Exception as err:
         print("Error")
-        dpg.add_text(tag='insert_error', default_value=Error, color=(255, 0, 0), before='table_records')
+        dpg.add_text(tag='insert_error', default_value="Некорректно введённые данные. Попробуйте ещё раз.", color=(255, 0, 0), before='table_records')
         connect_database('table_records')
 
 
@@ -144,7 +143,7 @@ def output_columns(sender, table_name):
 def output_tables(cursor):
     dpg.delete_item('output_list_error')
     try:
-        request = "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
+        request = "SELECT table_name FROM information_schema.tables WHERE table_schema='public';"
         cursor.execute(request)
         tables = [table[0] for table in cursor.fetchall()]
         dpg.configure_item('list_tables', items=tables, show=True, num_items=len(tables))
@@ -161,7 +160,7 @@ def connect_database(wrap: str):
                  'port': dpg.get_value('port'),
                  'database': dpg.get_value('database')}
     try:
-        # Подключение к существующей базе данных с использованием контекстного менеджера
+        # Подключение к существующей базе данных
         connection = psycopg2.connect(user=auth_data['user'],
                                       password=auth_data['password'],
                                       host=auth_data['host'],
@@ -198,8 +197,8 @@ with dpg.window(label="AUTHORIZATION", modal=True, show=False, tag="auth", no_ti
     dpg.add_input_text(label=":PORT", tag='port', default_value=DEFAULT_PORT)
     dpg.add_input_text(label=":DATABASE", tag='database', default_value=DEFAULT_DATABASE)
     with dpg.group(horizontal=True, tag='send_auth'):
-        dpg.add_button(label="Connect", width=75, callback=open_database)
-        dpg.add_button(label="Cancel", width=75, callback=lambda: dpg.configure_item("auth", show=False))
+        dpg.add_button(label="Connect", width=105, callback=open_database)
+        dpg.add_button(label="Cancel", width=105, callback=lambda: dpg.configure_item("auth", show=False))
 ########################################################################################################################
 
 
